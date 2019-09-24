@@ -1,0 +1,609 @@
+---
+title: "Assignment 3"
+author: "Mounica Subramani"
+date: "January 25, 2018"
+output:
+html_document:
+df_print: paged
+pdf_document: default
+---
+
+```{r}
+# Import required library files
+
+library(ggplot2)
+library(tidyverse)
+library(tidytext)
+library(dplyr)
+library(rmarkdown)
+library(nycflights13)
+library(maps)
+library(measurements)
+library(modelr)
+library(mlbench)
+library(purrr)
+library(tokenizers)
+library(pryr)
+library(tinytex)
+library(devtools)
+library(roxygen2)
+library(testthat)
+options(width = 90)
+
+```
+
+# Part A
+
+Problem 1
+
+Fit a model that predicts per capita crime rate by town (crim) using only one predictor variable. Use plots to justify your choice of predictor variable and the appropriateness of any transformations you use. Print the values of the fitted model parameters.
+
+```{r}
+data(BostonHousing)
+
+set.seed(1)
+
+# split_data <- resample_partition(BostonHousing,c(train = 0.9,
+#                                   test = 0.1))
+# split_data$train <- as_tibble(split_data$train)
+```
+
+```{r}
+# per capita crime rate by town vs proportion of residential land zoned for lots over 25,000 sq.ft
+ggplot(BostonHousing, aes(zn, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs proportion of non-retail business acres per town
+ggplot(BostonHousing, aes(indus, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)
+ggplot(BostonHousing, aes(chas, crim)) + geom_boxplot()
+#chas seems to be a categorical variable and hence boxplot is used.
+```
+
+```{r}
+# per capita crime rate by town vs nitric oxides concentration (parts per 10 million)
+ggplot(BostonHousing, aes(nox, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs average number of rooms per dwelling
+ggplot(BostonHousing, aes(rm, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs proportion of owner-occupied units built prior to 1940
+ggplot(BostonHousing, aes(age, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs weighted distances to five Boston employment centres
+ggplot(BostonHousing, aes(dis, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs index of accessibility to radial highways
+ggplot(BostonHousing, aes(rad, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs full-value property-tax rate per USD 10,000
+ggplot(BostonHousing, aes(tax, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs pupil-teacher ratio by town
+ggplot(BostonHousing, aes(ptratio, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs 1000(B - 0.63)^2 where B is the proportion of blacks by town
+ggplot(BostonHousing, aes(b, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs percentage of lower status of the population
+ggplot(BostonHousing, aes(lstat, crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs median value of owner-occupied homes in USD 1000's
+ggplot(BostonHousing, aes(medv, crim)) + geom_point(alpha = 0.5)
+```
+
+We see no obvious pattern and also the points are closely knitted which is making prediction a complex one. So we are trying to scatter the points in the plot.
+
+```{r}
+# trying to scatter the points on the plot using log2/log for better visibility.
+# per capita crime rate by town vs proportion of residential land zoned for lots over 25,000 sq.ft
+ggplot(BostonHousing, aes(zn, log2(crim))) + geom_point(alpha = 0.5)
+```
+
+```{r}
+#trying log2/log with predictor variable to check if any significant differences or patterns can be observed.
+# per capita crime rate by town vs proportion of residential land zoned for lots over 25,000 sq.ft
+ggplot(BostonHousing, aes(log2(zn), crim)) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# using log2/log for both the variables to check if any correlation can be observed.
+# per capita crime rate by town vs proportion of residential land zoned for lots over 25,000 sq.ft
+ggplot(BostonHousing, aes(log2(zn), log2(crim))) + geom_point(alpha = 0.5)
+#We see no obvious pattern, so we won't use `zn` as a predictor variable.
+```
+
+```{r}
+# per capita crime rate by town vs proportion of non-retail business acres per town
+ggplot(BostonHousing, aes(log2(indus), log2(crim))) + geom_point(alpha = 0.5)
+#We see no obvious pattern, so we won't use `indus` as a predictor variable.
+```
+
+```{r}
+# per capita crime rate by town vs nitric oxides concentration (parts per 10 million)
+ggplot(BostonHousing, aes(log2(nox), log2(crim))) + geom_point(alpha = 0.5)
+#We see a slight positive linear relation, but lets check with other variables too.
+```
+
+```{r}
+# per capita crime rate by town vs average number of rooms per dwelling
+ggplot(BostonHousing, aes(log2(rm), log2(crim))) + geom_point(alpha = 0.5)
+#We see no obvious pattern and its pretty random, so we won't use `rm` as a predictor variable.
+```
+
+```{r}
+# per capita crime rate by town vs proportion of owner-occupied units built prior to 1940
+ggplot(BostonHousing, aes(log2(age), log2(crim))) + geom_point(alpha = 0.5)
+#We see no obvious pattern, so we won't use `age` as a predictor variable.
+```
+
+```{r}
+# per capita crime rate by town vs weighted distances to five Boston employment centres
+ggplot(BostonHousing, aes(log2(dis), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+We see a strong negatively linear relationship between the variables, lets consider the variable.
+
+```{r}
+# per capita crime rate by town vs index of accessibility to radial highways
+ggplot(BostonHousing, aes(log2(rad), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs full-value property-tax rate per USD 10,000
+ggplot(BostonHousing, aes(log2(tax), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs pupil-teacher ratio by town
+ggplot(BostonHousing, aes(log2(ptratio), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# per capita crime rate by town vs percentage of lower status of the population
+ggplot(BostonHousing, aes(log2(lstat), log2(crim))) + geom_point(alpha = 0.5)
+#We see a slight positively linear relationship.
+```
+
+```{r}
+# per capita crime rate by town vs median value of owner-occupied homes in USD 1000's
+ggplot(BostonHousing, aes(log2(medv), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+"dis" is considered as a suitable predictor with the observed negative linear pattern.
+
+```{r}
+# per capita crime rate by town vs weighted distances to five Boston employment centres
+ggplot(BostonHousing, aes(log2(dis), log2(crim))) + geom_point(alpha = 0.5)
+```
+
+```{r}
+# fitting the model
+fit <- lm(log2(crim) ~ log2(dis), data=BostonHousing)
+fit
+```
+
+Problem 2
+
+Plot the residuals of the fitted model from Problem 1 against the predictor variable already in the model and
+against other potential predictor variables in the dataset. Comment on what you observe in each residual plot.
+(You do not need to include plots for predictor variables not in the model where you observe no systematic
+patterns in them.)
+
+```{r}
+# Plotting the residuals of the fitted model from Problem 1 against the predictor variable already in the model.
+
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(dis), y=resid))
+# the graph looks pretty random
+```
+
+Residual plot for variables not in model.
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(zn), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(indus), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(nox), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(rm), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(age), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(rad), y=resid))
+```
+we see that this plot is not randomly scattered and seems to have a serious correlation so this 
+variable can be potentially included in the model. Lets check other variables too.
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(tax), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(ptratio), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(b), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(lstat), y=resid))
+```
+
+```{r}
+BostonHousing %>% add_residuals(fit) %>%
+  ggplot() + geom_point(aes(x=log2(medv), y=resid))
+```
+
+we see that the plot with "rad" variable is not randomly scattered and seems to have a serious correlation, so this variable can be potentially included in the model.
+
+Problem 3
+
+Fit a new model for predicting per capita crime rate by town, adding or removing variables based on the
+residual plots from Problem 2.
+
+```{r}
+fit3 <- lm(log2(crim) ~ log2(dis)+log2(rad), data=BostonHousing)
+fit3
+
+BostonHousing %>% add_residuals(fit3) %>%
+  ggplot() + geom_point(aes(x=log2(dis) + log2(rad) , y=resid))
+# Based on the model predicted, the residual plot is made and it is evident that the points in the plot are randomly scattered. 
+```
+
+# PART B
+
+Problem 4
+
+Write a function that performs cross-validation for a linear model (fit using lm) and returns the average
+root-mean-square-error across all folds. The function should take as arguments (1) a formula used to fit the
+model, (2) a dataset, and (3) the number of folds to use for cross-validation. The function should partition
+the dataset, fit a model on each training partition, make predictions on each test partition, and return the
+average root-mean-square-error.
+
+```{r}
+
+cross_validation <- function(fitted, datasetq4, k){
+  Housing_cv <- crossv_kfold(datasetq4, k) 
+  Housing_cv = Housing_cv %>% mutate(fit = purrr::map(train, ~lm(fitted, data = .))) %>%
+    mutate(rmse_val = map2_dbl(fit, test, rmse))
+    mean_rmse <- mean(Housing_cv$rmse_val)
+    return(mean_rmse)
+}
+
+fitted <- log2(crim) ~ log2(dis)+log2(rad)
+
+cross_validation(fitted, BostonHousing, 10)
+```
+
+Problem 5
+
+Use your function from Problem 4 to compare the models you used from Part A with 5-fold cross-validation.
+Report the cross-validated root-mean-square-error for the models from Problems 1 and 3. Which model was
+more predictive?
+
+```{r}
+#fit is the model being used in Problem 1.
+
+#fit <- lm(log2(crim) ~ log2(dis), data=BostonHousing)
+#fit
+
+cross_validation(fit, BostonHousing, 5)
+```
+
+```{r}
+#fit3 is the model being used in Problem 3.
+
+#fit3 <- lm(log2(crim) ~ log2(dis)+log2(rad), data=BostonHousing)
+#fit3
+
+cross_validation(fit3, BostonHousing, 5)
+
+# The model derived in problem 3 is predictable and it's evident from the cross-validated root-mean-square-error value. The previous model's cv-rmse of model dervied from problem 1 is bit high comparitively.
+```
+
+# Part C
+
+Problem 6
+
+Import the text from all 56 Donald Trump speeches into R and tokenize the data into a tidy text data frame,
+using words as tokens. After removing stop words and the word "applause", plot the top 15 most common
+words used in Trump's speeches
+
+```{r}
+# rm("fit1", "fit2", "fit3")
+
+C_Data <- readLines("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt")
+
+Trump <- tibble(line=1:length(C_Data), text=C_Data)
+
+Trump_words <- unnest_tokens(Trump, word, text)
+print(Trump_words, n=10)
+
+Trump_words %>%
+  anti_join(stop_words, by="word") %>%
+  count(word, sort=TRUE) %>%
+  top_n(15) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x=word, y=n)) +
+  geom_col() +
+  coord_flip()
+```
+
+Problem 7
+
+Re-tokenize the text of all 56 Donald Trump Speeches into a new tidy text data frame, using bigrams as
+tokens. Remove each bigram where either word is a stop word or the word "applause". Then plot the top 15
+most common bigrams in Trump's speeches.
+
+```{r}
+Trump_bigrams <- Trump %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+Trump_bigrams <- Trump_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  filter(!word1 == "applause") %>%
+  filter(!word2 == "applause")
+
+Trump_bigrams %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(bigram, sort=TRUE) %>%
+  top_n(15) %>%
+  mutate(bigram = factor(bigram, levels = rev(unique(bigram))))  %>%
+  ggplot(aes(x=bigram, y=n)) +
+  geom_col() +
+  coord_flip()
+```
+
+Problem 8
+
+We would like to do a sentiment analysis of Donald Trump's speeches. In order to make sure sentiments are
+assigned to appropriate contexts, first tokenize the speeches into bigrams, and then filter out all bigrams
+where the first word is any of "not", "no", or "never".
+
+Now consider only the second word of each bigram. After filtering out the words "applause" and "trump",
+create a plot of the 10 most common words in Trump's speeches that are associated with each of the 10
+sentiments in the "nrc" lexicon.
+
+```{r}
+
+
+Trump_sentiment <- Trump %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)
+
+Trump_sentiment <- Trump_sentiment %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 == "not" | !word1 == "no" | !word1 == "never") %>%
+  filter(!word2 == "applause" & !word2 == "trump")
+
+nrcjoy <- get_sentiments("nrc") 
+
+Trump_sentiment %>% 
+  inner_join(nrcjoy, by = c("word2" = "word")) %>%
+  group_by(sentiment) %>%
+  count(word2, sort = TRUE) %>%
+  mutate(word2 = reorder(word2, n)) %>%
+  top_n(10) %>%
+  ggplot(aes(word2, n)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales="free") +
+  coord_flip()
+```
+
+Problem 9
+
+Create an S3 class called tidy_corpus which inherits from a tibble (tbl_df). A tidy_corpus is a tidy text
+data frame that always has at least one column called token, which gives the tokens, and an attribute called
+token_type which gives the type of token. A tidy_corpus object may also have an additional attribute
+called n when token_type is "ngrams".
+
+Create a constructor function that creates tidy_corpus objects called tidy_corpus(src, token, ...)
+which takes three parameters:
+. src is either a character vector or a directory of text files
+. token gives the kind of tokenization to be performed
+. ... are additional arguments passed to unnest_tokens()
+
+Write a plot() method for the tidy_corpus class that plots the top n most common tokens in the corpus
+where n is a user parameter defaulting to 10. Include an optional parameter for removing stop words. The
+removal of stop words should support at least words and bigrams.
+
+Test your class and methods on the data in Part C.
+
+```{r}
+
+# Creating an S3 class 
+
+C_Text <- read_lines("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt")
+
+tidy_corpus <- function(src, token, ...) {
+if (any(grepl(".*.txt", src))) { 
+src <- read_lines(src)
+}
+corpus_tbl <- tibble(line=1:length(src), words = src)
+corpus <- unnest_tokens(corpus_tbl, token = token, output = token, input = words, ...)
+corpus <- structure(corpus, class = c("tbl_df", "tbl", "data.frame"))
+element <- structure(list(corpus = corpus, token_type = token, ...), class = c("tidy_corpus"))
+return(element)
+} 
+
+# determine object type (whether "S3") with otype using speech file and words as arguments to tidy_corpus function created.
+
+otype(tidy_corpus("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt", token = "words"))
+
+# creating a function/method called plot
+
+plot <- function(x) UseMethod("plot")
+
+plot.tidy_corpus <- function(rand, n=10, rm_stop_words=FALSE) {
+  if (length(rand)==2) {
+    corpus <- rand$corpus
+    token_type <- rand$token_type
+    } else if (length(rand)==3) {
+      corpus <- rand$corpus
+      token_type <- rand$token_type
+      n_grams <- rand$n
+    }
+  if (token_type=="words") {
+    if (rm_stop_words==TRUE) {
+      corpus %>%
+        anti_join(stop_words, by=c("token"="word")) %>%
+        count(token, sort=TRUE) %>%
+        top_n(n) %>%
+        mutate(token = reorder(token, n)) %>% 
+        ggplot(aes(x=token, y=n)) + geom_col() +
+        coord_flip()
+      } else {
+        corpus %>%
+          count(token, sort=TRUE) %>%
+          top_n(n) %>%
+          mutate(token = reorder(token, n)) %>% 
+          ggplot(aes(x=token, y=n)) + geom_col() +
+          coord_flip()
+      }
+    } else if (token_type=="ngrams" && n_grams==2) {
+      if (rm_stop_words==TRUE) {
+        corpus <- corpus %>%
+          separate(token, c("word1", "word2"), sep = " ")
+        
+        corpus <- corpus %>% 
+          filter((!word1 %in% stop_words$word)) %>%
+          filter((!word2 %in% stop_words$word))
+        
+        corpus %>% 
+          unite(col = token, c("word1","word2"), sep=" ") %>%
+          count(token, sort=TRUE) %>%
+          top_n(n) %>%
+          mutate(token = reorder(token, n)) %>% 
+          ggplot(aes(x=token, y=n)) + geom_col() +
+          coord_flip()
+        } else {
+          corpus %>%
+            count(token, sort=TRUE) %>%
+            top_n(n) %>%
+            mutate(bigrams = reorder(token, n)) %>% 
+            ggplot(aes(x=token, y=n)) + geom_col() +
+            coord_flip()
+        }
+      } else {
+        corpus %>%
+          count(token, sort=TRUE) %>%
+          top_n(n) %>%
+          mutate(token = reorder(token, n)) %>% 
+          ggplot(aes(x=token, y=n)) + geom_col() +
+          coord_flip()
+      }
+} 
+```
+
+```{r}
+# check the tidy_corpus class with different arguments.
+
+# (1) src as "c_Text" and tokens as "unigrams/words"
+check_tidy_corpus <- tidy_corpus(src= C_Text, token= "words")
+#check_tidy_corpus
+
+# Non-removal of stop words
+plot.tidy_corpus(check_tidy_corpus, n=10, rm_stop_words=FALSE)
+# Removal of stop words
+plot.tidy_corpus(check_tidy_corpus, n=10, rm_stop_words=TRUE)
+
+# (2) src as a "directory" and tokens as "unigrams/words"
+check_tidy_corpus <- tidy_corpus("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt", token = "words")
+#check_tidy_corpus
+
+# Non-removal of stop words
+plot.tidy_corpus(check_tidy_corpus, n=10, rm_stop_words=FALSE)
+# Removal of stop words
+plot.tidy_corpus(check_tidy_corpus, n=10, rm_stop_words=TRUE)
+```
+
+```{r}
+
+# (3) src as a "directory" and tokens as "bigrams"
+check_tidy_corpus_bi <- tidy_corpus("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt", token = "ngrams", n = 2)
+#check_tidy_corpus_bi
+# Non-removal of stop words
+plot.tidy_corpus(check_tidy_corpus_bi, n=10, rm_stop_words=FALSE)
+# Removal of stop words
+plot.tidy_corpus(check_tidy_corpus_bi, n = 10, rm_stop_words = TRUE)
+
+# (4) src as a "directory" and tokens as "trigrams"
+check_tidy_corpus <- tidy_corpus("C:/Users/mouni/Downloads/Sem 1/R Lang/Datasets/full_speech.txt", token = "ngrams", n = 3)
+check_tidy_corpus
+
+# Non-removal of stop words
+plot.tidy_corpus(check_tidy_corpus, n=10, rm_stop_words=FALSE)
+```
+
+Problem 10
+
+Create an R package for the class and methods you created in Problem 9. For full credit, it should pass
+R CMD check without errors. (Warnings are okay. You do not need to include documentation.) Build the
+package and include the .tar.gz compressed file in your homework directory.
+
+```{r}
+# Creating an R package for the class and methods created in Problem 9
+
+#package.skeleton(name = "tidycorpus", list=c("tidy_corpus", "plot", "plot.tidy_corpus"))
+
+# commenting out the package creation code as the package has already been created and it might throw an error.
+
+# install the created package
+install("tidycorpus")
+
+# load the package
+library("tidycorpus")
+
+# R Check
+check("tidycorpus")
+
+# compressing the file
+library(utils)
+tar("tidycorpus.tar.gz", "C:/Users/mouni/OneDrive/Documents/tidycorpus", compression = "gzip", tar = "tar")
+```
